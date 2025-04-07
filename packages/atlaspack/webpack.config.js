@@ -16,6 +16,7 @@ const patchedExternals = {
   '@atlaspack/rust': "require('#atlaspack/rust')",
   '@swc/core': "require('#swc/core')",
   lightningcss: "require('#lightningcss')",
+  noop: "require('#noop')",
 };
 
 const baseConfig = {
@@ -71,6 +72,7 @@ const config = [
         },
       ],
     },
+    externals: {},
   },
   {
     ...structuredClone(baseConfig),
@@ -92,6 +94,7 @@ const config = [
         },
       ],
     },
+    externals: {},
   },
   {
     ...structuredClone(baseConfig),
@@ -209,7 +212,7 @@ const plugins = {
     ['xml', '../transformers/xml/lib/XMLTransformer.js'],
     ['raw', '../transformers/raw/lib/RawTransformer.js'],
   ],
-  nameer: [['default', '../namers/default/lib/DefaultNamer.js']],
+  namer: [['default', '../namers/default/lib/DefaultNamer.js']],
 
   runtimes: [
     ['js', '../runtimes/js/lib/JSRuntime.js'],

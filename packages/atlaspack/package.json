@@ -26,6 +26,8 @@
     "@atlaspack/cli": "*",
     "@atlaspack/rust": "*",
     "@swc/core": "*",
+    "@rspack/core": "*",
+    "@rspack/cli": "*",
     "cbor-x": "^1.6.0",
     "node-loader": "^2.1.0",
     "webpack": "^5.98.0",
