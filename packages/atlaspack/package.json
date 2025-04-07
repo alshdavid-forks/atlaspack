@@ -15,11 +15,11 @@
     "node": ">= 16.0.0"
   },
   "imports": {
-    "#atlaspack/rust": "./lib/atlaspack-rust/index.js",
     "#atlaspack/config-default": "./config-default.json",
-    "#parcel/source-map": "./lib/parcel-source-map/index.js",
-    "#parcel/watcher": "./lib/parcel-watcher/index.js",
-    "#swc/core": "./lib/swc-core/index.js",
+    "#atlaspack/rust": "./lib/vendor/atlaspack-rust/index.js",
+    "#parcel/source-map": "./lib/vendor/parcel-source-map/index.js",
+    "#parcel/watcher": "./lib/vendor/parcel-watcher/index.js",
+    "#swc/core": "./lib/vendor/swc-core/index.js",
     "#noop": "./noop.js"
   },
   "devDependencies": {

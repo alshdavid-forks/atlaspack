@@ -48,7 +48,7 @@ const config = [
     entry: './cmd/atlaspack.js',
     output: {
       filename: 'bin.js',
-      path: path.join(__dirname, 'lib'),
+      path: path.join(__dirname, 'lib', 'bin'),
     },
   },
   {
@@ -56,7 +56,7 @@ const config = [
     entry: './cmd/atlaspack-rust.js',
     output: {
       filename: 'index.js',
-      path: path.join(__dirname, 'lib', 'atlaspack-rust'),
+      path: path.join(__dirname, 'lib', 'vendor', 'atlaspack-rust'),
       library: 'atlaspack-rust',
       libraryTarget: 'umd',
     },
@@ -77,7 +77,7 @@ const config = [
     entry: './cmd/parcel-source-map.js',
     output: {
       filename: 'index.js',
-      path: path.join(__dirname, 'lib', 'parcel-source-map'),
+      path: path.join(__dirname, 'lib', 'vendor', 'parcel-source-map'),
       library: 'parcel-source-map',
       libraryTarget: 'umd',
     },
@@ -98,7 +98,7 @@ const config = [
     entry: './cmd/parcel-watcher.js',
     output: {
       filename: 'index.js',
-      path: path.join(__dirname, 'lib', 'parcel-watcher'),
+      path: path.join(__dirname, 'lib', 'vendor', 'parcel-watcher'),
       library: 'parcel-watcher',
       libraryTarget: 'umd',
     },
@@ -125,7 +125,7 @@ const config = [
     entry: './cmd/swc-core.js',
     output: {
       filename: 'index.js',
-      path: path.join(__dirname, 'lib', 'swc-core'),
+      path: path.join(__dirname, 'lib', 'vendor', 'swc-core'),
       library: 'swc-core',
       libraryTarget: 'umd',
     },
@@ -149,7 +149,7 @@ const config = [
     entry: './cmd/lightning-css.js',
     output: {
       filename: 'index.js',
-      path: path.join(__dirname, 'lib', 'lightning-css'),
+      path: path.join(__dirname, 'lib', 'vendor', 'lightning-css'),
       library: 'lightning-css',
       libraryTarget: 'umd',
     },
@@ -170,88 +170,93 @@ const config = [
   },
 ];
 
-const plugins = [
-  ['bundler-default', '../bundlers/default/lib/DefaultBundler.js'],
-  [
-    'transformer-typescript-types',
-    '../transformers/typescript-types/lib/TSTypesTransformer.js',
+const plugins = {
+  bundlers: [['default', '../bundlers/default/lib/DefaultBundler.js']],
+  transfomers: [
+    [
+      'typescript-types',
+      '../transformers/typescript-types/lib/TSTypesTransformer.js',
+    ],
+    [
+      'inline-string',
+      '../transformers/inline-string/lib/InlineStringTransformer.js',
+    ],
+    ['worklet', '../transformers/worklet/lib/WorkletTransformer.js'],
+    ['js', '../transformers/js/lib/JSTransformer.js'],
+    [
+      'react-refresh-wrap',
+      '../transformers/react-refresh-wrap/lib/ReactRefreshWrapTransformer.js',
+    ],
+    ['json', '../transformers/json/lib/JSONTransformer.js'],
+    ['jsonld', '../transformers/jsonld/lib/JSONLDTransformer.js'],
+    ['toml', '../transformers/toml/lib/TOMLTransformer.js'],
+    [
+      'webmanifest',
+      '../transformers/webmanifest/lib/WebManifestTransformer.js',
+    ],
+    ['yaml', '../transformers/yaml/lib/YAMLTransformer.js'],
+    ['glsl', '../transformers/glsl/lib/GLSLTransformer.js'],
+    ['graphql', '../transformers/graphql/lib/GraphQLTransformer.js'],
+    ['sass', '../transformers/sass/lib/SassTransformer.js'],
+    ['postcss', '../transformers/postcss/lib/PostCSSTransformer.js'],
+    ['css', '../transformers/css/lib/CSSTransformer.js'],
+    ['posthtml', '../transformers/posthtml/lib/PostHTMLTransformer.js'],
+    ['html', '../transformers/html/lib/HTMLTransformer.js'],
+    ['pug', '../transformers/pug/lib/PugTransformer.js'],
+    ['mdx', '../transformers/mdx/lib/MDXTransformer.js'],
+    ['image', '../transformers/image/lib/ImageTransformer.js'],
+    ['svg', '../transformers/svg/lib/SVGTransformer.js'],
+    ['xml', '../transformers/xml/lib/XMLTransformer.js'],
+    ['raw', '../transformers/raw/lib/RawTransformer.js'],
   ],
-  [
-    'transformer-inline-string',
-    '../transformers/inline-string/lib/InlineStringTransformer.js',
-  ],
-  ['transformer-worklet', '../transformers/worklet/lib/WorkletTransformer.js'],
-  ['transformer-js', '../transformers/js/lib/JSTransformer.js'],
-  [
-    'transformer-react-refresh-wrap',
-    '../transformers/react-refresh-wrap/lib/ReactRefreshWrapTransformer.js',
-  ],
-  ['transformer-json', '../transformers/json/lib/JSONTransformer.js'],
-  ['transformer-jsonld', '../transformers/jsonld/lib/JSONLDTransformer.js'],
-  ['transformer-toml', '../transformers/toml/lib/TOMLTransformer.js'],
-  [
-    'transformer-webmanifest',
-    '../transformers/webmanifest/lib/WebManifestTransformer.js',
-  ],
-  ['transformer-yaml', '../transformers/yaml/lib/YAMLTransformer.js'],
-  ['transformer-glsl', '../transformers/glsl/lib/GLSLTransformer.js'],
-  ['transformer-graphql', '../transformers/graphql/lib/GraphQLTransformer.js'],
-  ['transformer-sass', '../transformers/sass/lib/SassTransformer.js'],
-  ['transformer-postcss', '../transformers/postcss/lib/PostCSSTransformer.js'],
-  ['transformer-css', '../transformers/css/lib/CSSTransformer.js'],
-  [
-    'transformer-posthtml',
-    '../transformers/posthtml/lib/PostHTMLTransformer.js',
-  ],
-  ['transformer-html', '../transformers/html/lib/HTMLTransformer.js'],
-  ['transformer-pug', '../transformers/pug/lib/PugTransformer.js'],
-  ['transformer-mdx', '../transformers/mdx/lib/MDXTransformer.js'],
-  ['transformer-image', '../transformers/image/lib/ImageTransformer.js'],
-  ['transformer-svg', '../transformers/svg/lib/SVGTransformer.js'],
-  ['transformer-xml', '../transformers/xml/lib/XMLTransformer.js'],
-  ['transformer-raw', '../transformers/raw/lib/RawTransformer.js'],
-  ['namer-postcss', '../namers/default/lib/DefaultNamer.js'],
-  ['runtime-js', '../runtimes/js/lib/JSRuntime.js'],
-  ['runtime-browser-hmr', '../runtimes/hmr/lib/HMRRuntime.js'],
-  [
-    'runtime-react-refresh',
-    '../runtimes/react-refresh/lib/ReactRefreshRuntime.js',
-  ],
-  [
-    'runtime-service-worker',
-    '../runtimes/service-worker/lib/ServiceWorkerRuntime.js',
-  ],
-  ['optimizer-data-url', '../optimizers/data-url/lib/DataURLOptimizer.js'],
-  ['optimizer-css', '../optimizers/css/lib/CSSOptimizer.js'],
-  ['optimizer-htmlnano', '../optimizers/htmlnano/lib/HTMLNanoOptimizer.js'],
-  ['optimizer-swc', '../optimizers/swc/lib/SwcOptimizer.js'],
-  ['optimizer-svgo', '../optimizers/svgo/lib/SVGOOptimizer.js'],
-  ['optimizer-image', '../optimizers/image/lib/ImageOptimizer.js'],
-  ['packager-html', '../packagers/html/lib/HTMLPackager.js'],
-  ['packager-css', '../packagers/css/lib/CSSPackager.js'],
-  ['packager-js', '../packagers/js/lib/index.js'],
-  ['packager-svg', '../packagers/svg/lib/SVGPackager.js'],
-  ['packager-xml', '../packagers/xml/lib/XMLPackager.js'],
-  ['packager-ts', '../packagers/ts/lib/TSPackager.js'],
-  ['packager-wasm', '../packagers/wasm/lib/WasmPackager.js'],
-  ['packager-raw-url', '../packagers/raw-url/lib/RawUrlPackager.js'],
-  ['packager-raw', '../packagers/raw/lib/RawPackager.js'],
-  ['compressor-raw', '../compressors/raw/lib/RawCompressor.js'],
-  ['resolver-default', '../resolvers/default/lib/DefaultResolver.js'],
-  ['reporter-dev-server', '../reporters/dev-server/lib/ServerReporter.js'],
-];
+  nameer: [['default', '../namers/default/lib/DefaultNamer.js']],
 
-// for (const [pluginName, srcPath] of plugins) {
-//   config.push({
-//     ...structuredClone(baseConfig),
-//     entry: srcPath,
-//     output: {
-//       filename: 'index.js',
-//       path:  path.join(__dirname, 'lib', pluginName),
-//       library: pluginName,
-//       libraryTarget: 'umd',
-//     },
-//   })
-// }
+  runtimes: [
+    ['js', '../runtimes/js/lib/JSRuntime.js'],
+    ['browser-hmr', '../runtimes/hmr/lib/HMRRuntime.js'],
+    ['react-refresh', '../runtimes/react-refresh/lib/ReactRefreshRuntime.js'],
+    [
+      'service-worker',
+      '../runtimes/service-worker/lib/ServiceWorkerRuntime.js',
+    ],
+  ],
+  optimizers: [
+    ['data-url', '../optimizers/data-url/lib/DataURLOptimizer.js'],
+    ['css', '../optimizers/css/lib/CSSOptimizer.js'],
+    ['htmlnano', '../optimizers/htmlnano/lib/HTMLNanoOptimizer.js'],
+    ['swc', '../optimizers/swc/lib/SwcOptimizer.js'],
+    ['svgo', '../optimizers/svgo/lib/SVGOOptimizer.js'],
+    ['image', '../optimizers/image/lib/ImageOptimizer.js'],
+  ],
+  packagers: [
+    ['html', '../packagers/html/lib/HTMLPackager.js'],
+    ['css', '../packagers/css/lib/CSSPackager.js'],
+    ['js', '../packagers/js/lib/index.js'],
+    ['svg', '../packagers/svg/lib/SVGPackager.js'],
+    ['xml', '../packagers/xml/lib/XMLPackager.js'],
+    ['ts', '../packagers/ts/lib/TSPackager.js'],
+    ['wasm', '../packagers/wasm/lib/WasmPackager.js'],
+    ['raw-url', '../packagers/raw-url/lib/RawUrlPackager.js'],
+    ['raw', '../packagers/raw/lib/RawPackager.js'],
+  ],
+  compressors: [['raw', '../compressors/raw/lib/RawCompressor.js']],
+  resolvers: [['default', '../resolvers/default/lib/DefaultResolver.js']],
+  reporters: [['dev-server', '../reporters/dev-server/lib/ServerReporter.js']],
+};
+
+for (const [kind, pluginList] of Object.entries(plugins)) {
+  for (const [pluginName, srcPath] of pluginList) {
+    config.push({
+      ...structuredClone(baseConfig),
+      entry: srcPath,
+      output: {
+        filename: 'index.js',
+        path: path.join(__dirname, 'lib', kind, pluginName),
+        library: pluginName,
+        libraryTarget: 'umd',
+      },
+    });
+  }
+}
 
 module.exports = config;
