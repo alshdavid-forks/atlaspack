@@ -13,6 +13,7 @@ import type {HandleFunction} from './Handle';
 
 import * as bus from './bus';
 import invariant from 'assert';
+import module from 'module';
 import nullthrows from 'nullthrows';
 import EventEmitter from 'events';
 import {
@@ -103,7 +104,7 @@ export default class WorkerFarm extends EventEmitter {
     }
 
     // $FlowFixMe
-    this.localWorker = require(this.options.workerPath);
+    this.localWorker = module.createRequire(__dirname)(this.options.workerPath);
 
     this.localWorkerInit =
       this.localWorker.childInit != null ? this.localWorker.childInit() : null;
@@ -352,7 +353,7 @@ export default class WorkerFarm extends EventEmitter {
         }
       } else {
         // $FlowFixMe this must be dynamic
-        mod = require(location);
+        mod = eval('require')(location);
       }
     } else {
       throw new Error('Unknown request');

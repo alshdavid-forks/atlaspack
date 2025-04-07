@@ -175,7 +175,7 @@ export class NodePackageManager implements PackageManager {
     if (!path.isAbsolute(filePath)) {
       // Node builtin module
       // $FlowFixMe
-      return require(filePath);
+      return eval('require')(filePath);
     }
 
     // $FlowFixMe[prop-missing]
@@ -580,57 +580,87 @@ export class NodePackageManager implements PackageManager {
   }
 
   resolveInternal(name: string, from: string): PackageManagerResolveResult {
-    if (this.resolver == null) {
-      this.resolver = this._createResolver();
-    }
+    try {
+      if (this.resolver == null) {
+        this.resolver = this._createResolver();
+      }
 
-    let res = this.resolver.resolve({
-      filename: name,
-      specifierType: 'commonjs',
-      parent: from,
-      packageConditions: getConditionsFromEnv(),
-    });
+      let res = this.resolver.resolve({
+        filename: name,
+        specifierType: 'commonjs',
+        parent: from,
+        packageConditions: getConditionsFromEnv(),
+      });
 
-    // Invalidate whenever the .pnp.js file changes.
-    // TODO: only when we actually resolve a node_modules package?
-    if (process.versions.pnp != null && res.invalidateOnFileChange) {
-      // $FlowFixMe[prop-missing]
-      let pnp = Module.findPnpApi(path.dirname(from));
-      res.invalidateOnFileChange.push(pnp.resolveToUnqualified('pnpapi', null));
-    }
+      // Invalidate whenever the .pnp.js file changes.
+      // TODO: only when we actually resolve a node_modules package?
+      if (process.versions.pnp != null && res.invalidateOnFileChange) {
+        // $FlowFixMe[prop-missing]
+        let pnp = Module.findPnpApi(path.dirname(from));
+        res.invalidateOnFileChange.push(
+          pnp.resolveToUnqualified('pnpapi', null),
+        );
+      }
 
-    if (res.error) {
-      let e = new Error(`Could not resolve module "${name}" from "${from}"`);
-      // $FlowFixMe
-      e.code = 'MODULE_NOT_FOUND';
-      throw e;
-    }
-    let getPkg;
-    switch (res.resolution.type) {
-      case 'Path':
-        getPkg = () => {
+      if (res.error) {
+        let e = new Error(`Could not resolve module "${name}" from "${from}"`);
+        // $FlowFixMe
+        e.code = 'MODULE_NOT_FOUND';
+        throw e;
+      }
+      let getPkg;
+      switch (res.resolution.type) {
+        case 'Path':
+          getPkg = () => {
+            let pkgPath = this.fs.findAncestorFile(
+              ['package.json'],
+              nullthrows(res.resolution.value),
+              this.projectRoot,
+            );
+            return pkgPath
+              ? JSON.parse(this.fs.readFileSync(pkgPath, 'utf8'))
+              : null;
+          };
+        // fallthrough
+        case 'Builtin':
+          return {
+            resolved: res.resolution.value,
+            invalidateOnFileChange: new Set(res.invalidateOnFileChange),
+            invalidateOnFileCreate: res.invalidateOnFileCreate,
+            type: res.moduleType,
+            get pkg() {
+              return getPkg();
+            },
+          };
+        default:
+          throw new Error('Unknown resolution type');
+      }
+    } catch (error) {
+      try {
+        const requireFrom = Module.createRequire(from);
+        const resolved = requireFrom.resolve(name);
+        let getPkg = () => {
           let pkgPath = this.fs.findAncestorFile(
             ['package.json'],
-            nullthrows(res.resolution.value),
+            nullthrows(resolved),
             this.projectRoot,
           );
           return pkgPath
             ? JSON.parse(this.fs.readFileSync(pkgPath, 'utf8'))
             : null;
         };
-      // fallthrough
-      case 'Builtin':
         return {
-          resolved: res.resolution.value,
-          invalidateOnFileChange: new Set(res.invalidateOnFileChange),
-          invalidateOnFileCreate: res.invalidateOnFileCreate,
-          type: res.moduleType,
+          resolved: resolved,
+          invalidateOnFileChange: new Set(),
+          invalidateOnFileCreate: [],
+          type: 0,
           get pkg() {
             return getPkg();
           },
         };
-      default:
-        throw new Error('Unknown resolution type');
+      } catch {
+        throw error;
+      }
     }
   }
 }

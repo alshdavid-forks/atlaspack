@@ -8,6 +8,7 @@ import {INTERNAL_ORIGINAL_CONSOLE} from '@atlaspack/logger';
 import chalk from 'chalk';
 import commander from 'commander';
 import path from 'path';
+import module from 'module';
 import {version} from '../package.json';
 import {applyOptions} from './applyOptions';
 import {makeDebugCommand} from './makeDebugCommand';
@@ -137,9 +138,23 @@ async function run(
   let options = await normalizeOptions(command, fs);
   let atlaspack = new Atlaspack({
     entries,
-    defaultConfig: require.resolve('@atlaspack/config-default', {
-      paths: [fs.cwd(), __dirname],
-    }),
+    defaultConfig: (() => {
+      try {
+        return module
+          .createRequire(fs.cwd())
+          .resolve('@atlaspack/config-default');
+      } catch (error) {
+        /* */
+      }
+      try {
+        return module
+          .createRequire(__dirname)
+          .resolve('@atlaspack/config-default');
+      } catch (error) {
+        /* */
+      }
+      throw new Error('Cannot find default config');
+    })(),
     shouldPatchConsole: false,
     ...options,
   });
