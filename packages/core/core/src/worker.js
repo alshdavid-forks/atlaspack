@@ -10,9 +10,9 @@ import type {SharedReference, WorkerApi} from '@atlaspack/workers';
 import {loadConfig as configCache} from '@atlaspack/utils';
 import type {DevDepSpecifier} from './requests/DevDepRequest';
 
-import invariant from 'assert';
+// import invariant from 'assert';
 import nullthrows from 'nullthrows';
-import BundleGraph from './BundleGraph';
+// import BundleGraph from './BundleGraph';
 import Transformation, {
   type TransformationOpts,
   type TransformationResult,
@@ -32,14 +32,14 @@ import '@atlaspack/cache'; // register with serializer
 import '@atlaspack/package-manager';
 import '@atlaspack/fs';
 
-// $FlowFixMe
-if (process.env.ATLASPACK_BUILD_REPL && process.browser) {
-  /* eslint-disable import/no-extraneous-dependencies, monorepo/no-internal-import */
-  require('@atlaspack/repl/src/atlaspack/BrowserPackageManager.js');
-  // $FlowFixMe
-  require('@atlaspack/repl/src/atlaspack/ExtendedMemoryFS.js');
-  /* eslint-enable import/no-extraneous-dependencies, monorepo/no-internal-import */
-}
+// // $FlowFixMe
+// if (process.env.ATLASPACK_BUILD_REPL && process.browser) {
+//   /* eslint-disable import/no-extraneous-dependencies, monorepo/no-internal-import */
+//   require('@atlaspack/repl/src/atlaspack/BrowserPackageManager.js');
+//   // $FlowFixMe
+//   require('@atlaspack/repl/src/atlaspack/ExtendedMemoryFS.js');
+//   /* eslint-enable import/no-extraneous-dependencies, monorepo/no-internal-import */
+// }
 
 registerCoreWithSerializer();
 
@@ -144,7 +144,7 @@ export async function runPackage(
   |},
 ): Promise<RunPackagerRunnerResult> {
   let bundleGraph = workerApi.getSharedReference(bundleGraphReference);
-  invariant(bundleGraph instanceof BundleGraph);
+  // invariant(bundleGraph instanceof BundleGraph);
   let options = loadOptions(optionsRef, workerApi);
   let atlaspackConfig = await loadConfig(configCachePath, options);
 
@@ -156,6 +156,7 @@ export async function runPackage(
     previousInvalidations,
   });
 
+  // $FlowFixMe
   return runner.run(bundleGraph, bundle, invalidDevDeps);
 }
 

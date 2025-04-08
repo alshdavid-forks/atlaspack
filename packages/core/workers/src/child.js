@@ -101,7 +101,7 @@ export class Child {
 
   async childInit(module: string, childId: number): Promise<void> {
     // $FlowFixMe
-    this.module = require(module);
+    this.module = eval('require')(module);
     this.childId = childId;
 
     if (this.module.childInit != null) {

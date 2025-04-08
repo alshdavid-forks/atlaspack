@@ -10,7 +10,8 @@
     "url": "https://github.com/atlassian-labs/atlaspack.git"
   },
   "engines": {
-    "node": ">= 16.0.0"
+    "node": ">= 16.0.0",
+    "atlaspack": "*"
   },
   "type": "commonjs",
   "exports": {
@@ -38,8 +39,8 @@
     "./workers": "./lib/core/workers/index.js",
     "./bundler/*": "./lib/bundlers/*/index.js",
     "./config/*": "./lib/configs/*/index.json",
-    "./transformer/*": "./lib/transfomers/*/index.js",
-    "./namer/*": "./lib/namer/*/index.js",
+    "./transformer/*": "./lib/transformers/*/index.js",
+    "./namer/*": "./lib/namers/*/index.js",
     "./runtime/*": "./lib/runtimes/*/index.js",
     "./optimizer/*": "./lib/optimizers/*/index.js",
     "./packager/*": "./lib/packagers/*/index.js",
@@ -72,8 +73,8 @@
     "#atlaspack/workers": "./lib/core/workers/index.js",
     "#atlaspack/bundler/*": "./lib/bundlers/*/index.js",
     "#atlaspack/config/*": "./lib/configs/*/index.js",
-    "#atlaspack/transformer/*": "./lib/transfomers/*/index.js",
-    "#atlaspack/namer/*": "./lib/namer/*/index.js",
+    "#atlaspack/transformer/*": "./lib/transformers/*/index.js",
+    "#atlaspack/namer/*": "./lib/namers/*/index.js",
     "#atlaspack/runtime/*": "./lib/runtimes/*/index.js",
     "#atlaspack/optimizer/*": "./lib/optimizers/*/index.js",
     "#atlaspack/packager/*": "./lib/packagers/*/index.js",

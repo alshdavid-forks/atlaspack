@@ -115,26 +115,9 @@ config.push(
       },
     ],
   }),
-  withBaseConfig({
-    entry:
-      '/home/dalsh/Development/alshdavid-forks/atlaspack/node_modules/lmdb/dist/index.cjs',
-    output: {
-      path: path.join(__dirname, 'lib', 'vendor', 'lmdb'),
-      library: 'lmdb',
-      libraryTarget: 'umd',
-    },
-    module: {
-      rules: [Rules['.node']()],
-    },
-    externals: [
-      ({request}, callback) => {
-        return callback();
-        // if (!request.endsWith('.node')) return callback()
-        // if (request.includes(PLATFORM) && request.includes(ARCH)) return callback()
-        // return callback(null, '#noop', 'commonjs2')
-      },
-    ],
-  }),
+);
+
+config.push(
   withBaseConfig({
     entry: './src/parcel-watcher/index.js',
     output: {
@@ -158,9 +141,13 @@ config.push(
       },
     ],
   }),
+);
+
+config.push(
   withBaseConfig({
     entry: './src/swc-core/index.js',
     output: {
+      // path: require.resolve('@swc/core'),
       path: path.join(__dirname, 'lib', 'vendor', 'swc-core'),
       library: 'swc-core',
       libraryTarget: 'umd',
@@ -169,9 +156,9 @@ config.push(
       rules: [Rules['.node']()],
     },
     externals: [
+      {'@swc/wasm': '#noop'},
       ({request}, callback) => {
         const variants = [
-          '@swc/wasm',
           '@swc/core-android-arm64',
           '@swc/core-android-arm-eabi',
           '@swc/core-win32-x64-msvc',
@@ -193,7 +180,10 @@ config.push(
           './swc.wasi.cjs',
           '@swc/core-wasm32-wasi',
         ];
-        if (request.endsWith('.node'))
+        if (
+          request.endsWith('.node') &&
+          (!request.includes(PLATFORM) || !request.includes(ARCH))
+        )
           return callback(null, '#noop', 'commonjs2');
         if (!variants.includes(request)) return callback();
         if (request.includes(PLATFORM) && request.includes(ARCH))
@@ -202,6 +192,9 @@ config.push(
       },
     ],
   }),
+);
+
+config.push(
   withBaseConfig({
     entry: './src/lightningcss/index.js',
     output: {
@@ -231,16 +224,70 @@ config.push(
   }),
 );
 
+// Hack to get lmdb vendored
+const lmbd = nodeModule.findPackageJSON('lmdb', __dirname);
+fs.mkdirSync(path.join(__dirname, 'lib', 'vendor', 'lmdb', 'prebuilds'), {
+  recursive: true,
+});
+fs.cpSync(
+  path.join(path.dirname(lmbd), 'dict'),
+  path.join(__dirname, 'lib', 'vendor', 'lmdb', 'dict'),
+  {recursive: true},
+);
+for (const dir of fs.readdirSync(
+  path.join(path.dirname(path.dirname(lmbd)), '@lmdb'),
+)) {
+  if (
+    dir.toLowerCase().includes(PLATFORM) &&
+    dir.toLowerCase().includes(ARCH)
+  ) {
+    fs.cpSync(
+      path.join(path.dirname(path.dirname(lmbd)), '@lmdb', dir),
+      path.join(
+        __dirname,
+        'lib',
+        'vendor',
+        'lmdb',
+        'prebuilds',
+        dir.replace('lmdb-', ''),
+      ),
+      {recursive: true},
+    );
+  }
+}
+
+config.push(
+  withBaseConfig({
+    entry: path.join(path.dirname(lmbd), 'dist', 'index.cjs'),
+    output: {
+      path: path.join(__dirname, 'lib', 'vendor', 'lmdb'),
+      library: 'lmdb',
+      libraryTarget: 'umd',
+    },
+    module: {
+      rules: [Rules['.node']()],
+    },
+  }),
+);
+
 // Core
 const packages = [
+  // ['cli', '../core/cli/lib/cli.js'],
+  // ['conditional-import-types', '../core/conditional-import-types'],
+  // ['types', '../core/types'],
+  // ['types-internal', '../core/types-internal'],
   ['build-cache', '../core/build-cache/lib/index.js'],
   ['cache', '../core/cache/lib/index.js'],
-  ['cli', '../core/cli/lib/cli.js'],
   ['codeframe', '../core/codeframe/lib/codeframe.js'],
-  // ['conditional-import-types', '../core/conditional-import-types'],
   ['core', '../core/core/lib/index.js'],
   [
     'core-worker',
+    '../core/core/lib/worker.js',
+    path.join(__dirname, 'lib', 'core', 'core'),
+    'worker.js',
+  ],
+  [
+    'core-worker-v3',
     '../core/core/lib/atlaspack-v3/worker/worker.js',
     path.join(__dirname, 'lib', 'core', 'core', 'worker'),
   ],
@@ -253,8 +300,7 @@ const packages = [
   ['package-manager', '../core/package-manager/lib/index.js'],
   ['plugin', '../core/plugin/lib/PluginAPI.js'],
   ['profiler', '../core/profiler/lib/index.js'],
-  // ['types', '../core/types'],
-  // ['types-internal', '../core/types-internal'],
+
   ['utils', '../core/utils/lib/index.js'],
   ['workers', '../core/workers/lib/index.js'],
   [
@@ -290,6 +336,43 @@ for (const [packageName, packageSrc, outputPath, filename] of packages) {
     }),
   );
 }
+
+config.push(
+  withBaseConfig({
+    entry: '../core/cli/lib/cli.js',
+    output: {
+      path: path.join(__dirname, 'lib', 'core', 'cli'),
+      library: `atlaspack-cli`,
+      libraryTarget: 'umd',
+    },
+    plugins: [
+      {
+        apply: (compiler) => {
+          compiler.hooks.afterEmit.tap('AfterEmitPlugin', () => {
+            let content = fs.readFileSync(
+              path.join(__dirname, 'lib', 'core', 'cli', 'index.js'),
+              'utf8',
+            );
+            content = content.replaceAll(
+              '@atlaspack/reporter-cli',
+              '#atlaspack/reporter/cli',
+            );
+            content = content.replaceAll('@atlaspack/', '#atlaspack/');
+            fs.writeFileSync(
+              path.join(__dirname, 'lib', 'core', 'cli', 'index.js'),
+              content,
+              'utf8',
+            );
+          });
+        },
+      },
+    ],
+    externals: {
+      ...vendoredExternals,
+      ...atlaspackExternals,
+    },
+  }),
+);
 
 config.push(
   withBaseConfig({
@@ -386,7 +469,10 @@ const plugins = {
   ],
   compressors: [['raw', '../compressors/raw/lib/RawCompressor.js']],
   resolvers: [['default', '../resolvers/default/lib/DefaultResolver.js']],
-  reporters: [['dev-server', '../reporters/dev-server/lib/ServerReporter.js']],
+  reporters: [
+    ['dev-server', '../reporters/dev-server/lib/ServerReporter.js'],
+    ['cli', '../reporters/cli/lib/CLIReporter.js'],
+  ],
 };
 
 for (const [kind, pluginList] of Object.entries(plugins)) {
@@ -407,7 +493,29 @@ for (const [kind, pluginList] of Object.entries(plugins)) {
     );
   }
 }
+fs.cpSync(
+  path.join(__dirname, '../reporters/dev-server/src/templates'),
+  path.join(__dirname, 'lib', 'reporters', 'src', 'templates'),
+  {
+    recursive: true,
+  },
+);
+fs.cpSync(
+  path.join(__dirname, '../packagers/js/lib/dev-prelude.js'),
+  path.join(__dirname, './lib/packagers/js/dev-prelude.js'),
+  {
+    recursive: true,
+  },
+);
+fs.cpSync(
+  path.join(__dirname, '../runtimes/hmr/lib/loaders'),
+  path.join(__dirname, './lib/runtimes/browser-hmr/loaders'),
+  {
+    recursive: true,
+  },
+);
 
+// Configs
 fs.mkdirSync(path.join(__dirname, 'lib', 'configs', 'default'), {
   recursive: true,
 });
