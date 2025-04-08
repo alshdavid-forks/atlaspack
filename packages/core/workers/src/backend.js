@@ -25,8 +25,8 @@ export function getWorkerBackend(backend: BackendType): Class<WorkerImpl> {
       return require('./threads/ThreadsWorker').default;
     case 'process':
       return require('./process/ProcessWorker').default;
-    case 'web':
-      return require('./web/WebWorker').default;
+    // case 'web':
+    //   return require('./web/WebWorker').default;
     default:
       throw new Error(`Invalid backend: ${backend}`);
   }

@@ -1,4 +1,4 @@
 // eslint-disable-next-line import/no-extraneous-dependencies
-export * from '@atlaspack/rust';
+export * from 'lmdb';
 // eslint-disable-next-line import/no-extraneous-dependencies
-export {default} from '@atlaspack/rust';
+export {default} from 'lmdb';
