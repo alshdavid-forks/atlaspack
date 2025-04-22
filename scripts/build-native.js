@@ -3,6 +3,7 @@ const fs = require('fs');
 const glob = require('glob');
 const path = require('path');
 const {spawn, execSync} = require('child_process');
+const process = require('node:process');
 
 let release = process.argv.includes('--release');
 let canary = process.argv.includes('--canary');
@@ -26,6 +27,7 @@ async function build() {
     }
 
     console.log(`Building ${pkg}...`);
+    continue
     await new Promise((resolve, reject) => {
       let args = [];
       const prefix = wasm ? 'wasm:' : '';
