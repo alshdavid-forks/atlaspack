@@ -25,9 +25,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/rust-toolchain
+        with: { components: "clippy, rustfmt" }
       - uses: Swatinem/rust-cache@v2
         with: { shared-key: "${{ matrix.os }}" }
-      - run: rustup component add clippy
       - run: cargo fmt --all -- --check
       - run: cargo clippy -- -D warnings
 
