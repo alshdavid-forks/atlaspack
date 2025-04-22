@@ -68,7 +68,7 @@ jobs:
       - run: yarn build-native-release
       - uses: actions/upload-artifact@v4
         with:
-          name: packages-${{ matrix.config.os }}-${{ matrix.config.arch }}
+          name: packages-${{ matrix.config.runner }}
           path: ${{ github.workspace }}/packages/**/*
           if-no-files-found: error
           retention-days: 1
