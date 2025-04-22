@@ -69,6 +69,8 @@ jobs:
             RUSTUP_TARGET: x86_64-apple-darwin
     name: "${{ matrix.config.name }}"
     runs-on: ${{ matrix.config.runner }}
+    env:
+      RUSTUP_TARGET: ${{ matrix.config.RUSTUP_TARGET }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
