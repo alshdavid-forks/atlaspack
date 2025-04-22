@@ -51,12 +51,16 @@ jobs:
         config:
           - name: "🔨🐥 Linux AMD64"
             runner: ubuntu-24.04
+            meta: linux-amd64-gnu
           - name: "🔨🐥 Linux ARM64"
             runner: ubuntu-24.04-arm
+            meta: linux-arm64-gnu
           - name: "🔨🍎 MacOS AMD64"
             runner: macos-13
+            meta: macos-amd64
           - name: "🔨🍎 MacOS ARM64"
             runner: macos-15
+            meta: macos-arm64
 
     name: "${{ matrix.config.name }}"
     runs-on: ${{ matrix.config.runner }}
@@ -68,7 +72,7 @@ jobs:
       - run: yarn build-native-release
       - uses: actions/upload-artifact@v4
         with:
-          name: packages-${{ matrix.config.runner }}
+          name: packages-${{ matrix.config.meta }}
           path: ${{ github.workspace }}/packages/**/*
           if-no-files-found: error
           retention-days: 1
