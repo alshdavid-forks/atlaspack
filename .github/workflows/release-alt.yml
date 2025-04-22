@@ -67,12 +67,12 @@ jobs:
       - uses: actions/checkout@v4
       - run: . ./.github/install-scripts/nodejs/main.ps1
       - run: . ./.github/install-scripts/rust/main.ps1
-      - run: rustup target add ${{ matrix.config.RUST_TARGET }}
+      - run: rustup target add ${{ matrix.config.RUSTUP_TARGET }}
       - run: yarn install
       - run: yarn build-native-release
       - uses: actions/upload-artifact@v4
         with:
-          name: "packages-${{ matrix.config.RUST_TARGET }}"
+          name: "packages-${{ matrix.config.RUSTUP_TARGET }}"
           path: ${{ github.workspace }}/packages/**/*
           if-no-files-found: error
           retention-days: 1
