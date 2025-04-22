@@ -8,8 +8,8 @@ const process = require('node:process');
 const __root = path.normalize(path.join(__dirname, '..'));
 
 // Do a full cargo build
-const PROFILE = process.env.CARGO_PROFILE;
-const TARGET = process.env.RUSTUP_TARGET;
+const CARGO_PROFILE = process.env.CARGO_PROFILE;
+const RUSTUP_TARGET = process.env.RUSTUP_TARGET;
 
 const defaultTarget = {
   'linux-x64': 'x86_64-unknown-linux-gnu',
@@ -20,12 +20,12 @@ const defaultTarget = {
   'win32-arm64': 'aarch64-pc-windows-msvc',
 }[`${process.platform}-${process.arch}`];
 
-const rustTarget = TARGET || defaultTarget;
+const rustTarget = RUSTUP_TARGET || defaultTarget;
 
 const cargoCommand = ['cargo', 'build', '--target', rustTarget];
 
-if (PROFILE && PROFILE !== 'debug') {
-  cargoCommand.push('--profile', PROFILE);
+if (CARGO_PROFILE && CARGO_PROFILE !== 'debug') {
+  cargoCommand.push('--profile', CARGO_PROFILE);
 }
 
 // eslint-disable-next-line no-console
@@ -46,7 +46,7 @@ for (const workspace of workspaces) {
     if (pkgJson.napi && !pkgJson.napi.skip) {
       const command = [];
 
-      if (TARGET === 'wasm32-unknown-unknown') {
+      if (rustTarget === 'wasm32-unknown-unknown') {
         // Not supported
         // "wasm:build": "cargo build -p atlaspack-node-bindings --target wasm32-unknown-unknown && cp ../../../target/wasm32-unknown-unknown/debug/atlaspack_node_bindings.wasm .",
         // "wasm:build-release": "CARGO_PROFILE_RELEASE_LTO=true cargo build -p atlaspack-node-bindings --target wasm32-unknown-unknown --release && wasm-opt --strip-debug -O ../../../target/wasm32-unknown-unknown/release/atlaspack_node_bindings.wasm -o atlaspack_node_bindings.wasm"
@@ -54,8 +54,8 @@ for (const workspace of workspaces) {
         command.push('npx', 'napi', 'build', '--target', rustTarget);
       }
 
-      if (PROFILE && PROFILE !== 'debug') {
-        command.push('--profile', PROFILE);
+      if (CARGO_PROFILE && CARGO_PROFILE !== 'debug') {
+        command.push('--profile', CARGO_PROFILE);
       }
 
       command.push(

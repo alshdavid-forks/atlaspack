@@ -13,8 +13,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/nodejs/main.ps1
-      - run: yarn install
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
+      - run: yarn install --frozen-lockfile
       - run: npx eslint .
       - run: npx prettier "./packages/*/*/{src,bin,test}/**/*.{js,json,md}" --list-different
 
@@ -23,7 +24,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/rust/main.ps1
+      - uses: ./.github/actions/rust-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with: { shared-key: "${{ matrix.os }}" }
       - run: rustup component add clippy
       - run: cargo fmt --all -- --check
       - run: cargo clippy -- -D warnings
@@ -33,9 +36,12 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/nodejs/main.ps1
-      - run: . ./.github/install-scripts/rust/main.ps1
-      - run: yarn install
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
+      - uses: ./.github/actions/rust-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with: { shared-key: "${{ matrix.os }}" }
+      - run: yarn install --frozen-lockfile
       - run: yarn build
       - run: yarn build-ts
       - uses: actions/upload-artifact@v4
@@ -65,10 +71,13 @@ jobs:
     runs-on: ${{ matrix.config.runner }}
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/nodejs/main.ps1
-      - run: . ./.github/install-scripts/rust/main.ps1
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
+      - uses: ./.github/actions/rust-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with: { shared-key: "${{ matrix.os }}" }
       - run: rustup target add ${{ matrix.config.RUSTUP_TARGET }}
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
       - run: yarn build-native-release
       - uses: actions/upload-artifact@v4
         with:
@@ -87,19 +96,23 @@ jobs:
             runner: macos-15
     name: "${{ matrix.config.name }}"
     runs-on: ${{ matrix.config.runner }}
+    timeout-minutes: 35
     needs:
       - build_native
       - build_javascript
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/nodejs/main.ps1
-      - run: . ./.github/install-scripts/rust/main.ps1
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
+      - uses: ./.github/actions/rust-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with: { shared-key: "${{ matrix.os }}" }
       - uses: actions/download-artifact@v4
         with:
           pattern: packages-*
           path: packages
           merge-multiple: true
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
       - run: yarn test:integration
 
   integration_tests_v3:
@@ -112,20 +125,57 @@ jobs:
             runner: macos-15
     name: "${{ matrix.config.name }}"
     runs-on: ${{ matrix.config.runner }}
+    timeout-minutes: 35
     needs:
       - build_native
       - build_javascript
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/nodejs/main.ps1
-      - run: . ./.github/install-scripts/rust/main.ps1
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
+      - uses: ./.github/actions/rust-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with: { shared-key: "${{ matrix.os }}" }
       - uses: actions/download-artifact@v4
         with:
           pattern: packages-*
           path: packages
           merge-multiple: true
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
       - run: yarn test:integration:v3
+
+  e2e_tests:
+    strategy:
+      matrix:
+        config:
+          - name: "🧪🐥 Linux AMD64"
+            runner: ubuntu-24.04
+          - name: "🧪🍎 MacOS ARM64"
+            runner: macos-15
+    name: "${{ matrix.config.name }}"
+    runs-on: ${{ matrix.config.runner }}
+    timeout-minutes: 35
+    needs:
+      - build_native
+      - build_javascript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
+      - uses: ./.github/actions/rust-toolchain
+      - uses: Swatinem/rust-cache@v2
+        with: { shared-key: "${{ matrix.os }}" }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: packages-*
+          path: packages
+          merge-multiple: true
+      - name: Bump max inotify watches (Linux only)
+        run: echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p;
+        if: ${{ runner.os == 'Linux' }}
+      - run: yarn install --frozen-lockfile
+      - run: yarn playwright install
+      - run: yarn test:e2e:ci
 
   unit_tests_javascript:
     name: "🔬 Unit Tests: JavaScript"
@@ -135,13 +185,14 @@ jobs:
       - build_javascript
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/nodejs/main.ps1
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
       - uses: actions/download-artifact@v4
         with:
           pattern: packages-*
           path: packages
           merge-multiple: true
-      - run: yarn install
+      - run: yarn install --frozen-lockfile
       - run: yarn test:js:unit
 
   unit_tests_rust:
@@ -152,7 +203,8 @@ jobs:
       - build_javascript
     steps:
       - uses: actions/checkout@v4
-      - run: . ./.github/install-scripts/nodejs/main.ps1
+      - uses: actions/setup-node@v4
+        with: { cache: yarn, node-version: "${{ matrix.node }}" }
       - run: cargo test
 
   publish_npm:
@@ -164,8 +216,9 @@ jobs:
       - build_javascript
       - build_native
       - integration_tests
-      - unit_tests_javascript
       - integration_tests_v3
+      - e2e_tests
+      - unit_tests_javascript
       - unit_tests_rust
     steps:
       - run: echo "Made it"
@@ -179,8 +232,9 @@ jobs:
       - build_javascript
       - build_native
       - integration_tests
-      - unit_tests_javascript
       - integration_tests_v3
+      - e2e_tests
+      - unit_tests_javascript
       - unit_tests_rust
     steps:
       - run: echo "Made it"
