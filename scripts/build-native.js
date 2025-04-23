@@ -51,7 +51,14 @@ for (const workspace of workspaces) {
         // "wasm:build": "cargo build -p atlaspack-node-bindings --target wasm32-unknown-unknown && cp ../../../target/wasm32-unknown-unknown/debug/atlaspack_node_bindings.wasm .",
         // "wasm:build-release": "CARGO_PROFILE_RELEASE_LTO=true cargo build -p atlaspack-node-bindings --target wasm32-unknown-unknown --release && wasm-opt --strip-debug -O ../../../target/wasm32-unknown-unknown/release/atlaspack_node_bindings.wasm -o atlaspack_node_bindings.wasm"
       } else {
-        command.push('npx', 'napi', 'build', '--target', rustTarget);
+        command.push(
+          'npx',
+          'napi',
+          'build',
+          '--platform',
+          '--target',
+          rustTarget,
+        );
       }
 
       if (CARGO_PROFILE && CARGO_PROFILE !== 'debug') {
