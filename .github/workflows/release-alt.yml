@@ -189,6 +189,11 @@ jobs:
   unit_tests_javascript:
     name: "🔬 Unit Tests: JavaScript"
     runs-on: ubuntu-24.04
+    needs:
+      - lint_javascript
+      - lint_rust
+      - build_javascript
+      - build_native
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -204,6 +209,11 @@ jobs:
   unit_tests_rust:
     name: "🔬 Unit Tests: Rust"
     runs-on: ubuntu-24.04
+    needs:
+      - lint_javascript
+      - lint_rust
+      - build_javascript
+      - build_native
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
