@@ -16,7 +16,6 @@ env:
 
 jobs:
   build-native-linux:
-    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -66,12 +65,7 @@ jobs:
           RUSTUP_TARGET: ${{ matrix.target }}
           CARGO_PROFILE: release
         run: yarn build-native
-      - name: Upload debug symbols to sentry
-        run: node "./scripts/debug-symbols.mjs"
-        env:
-          SENTRY_ORG: ${{secrets.SENTRY_ORG}}
-          SENTRY_PROJECT: ${{secrets.SENTRY_PROJECT}}
-          SENTRY_AUTH_TOKEN: ${{secrets.SENTRY_AUTH_TOKEN}}
+      - run: node "./scripts/debug-symbols.mjs" --rm
       - run: yarn build
       - run: yarn build-ts
       - run: node scripts/build-gh-release.mjs
@@ -92,9 +86,9 @@ jobs:
             os: macos-15
 
           # MACOS AMD64
-          # - name: x86_64-apple-darwin
-          #   target: x86_64-apple-darwin
-          #   os: macos-13
+          - name: x86_64-apple-darwin
+            target: x86_64-apple-darwin
+            os: macos-13
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -111,12 +105,7 @@ jobs:
           RUSTUP_TARGET: ${{ matrix.target }}
           CARGO_PROFILE: release
         run: yarn build-native
-      - name: Upload debug symbols to sentry
-        run: node "./scripts/debug-symbols.mjs"
-        env:
-          SENTRY_ORG: ${{secrets.SENTRY_ORG}}
-          SENTRY_PROJECT: ${{secrets.SENTRY_PROJECT}}
-          SENTRY_AUTH_TOKEN: ${{secrets.SENTRY_AUTH_TOKEN}}
+      - run: node "./scripts/debug-symbols.mjs" --rm
       - run: yarn build
       - run: yarn build-ts
       - run: node scripts/build-gh-release.mjs
@@ -150,7 +139,7 @@ jobs:
 
           cd release
           for name in *.tar.gz; do
-              [ -f "$i" ] || break
+              [ -f "$name" ] || break
               echo Uploading $name
               gh release upload $ATLASPACK_VERSION $name
           done

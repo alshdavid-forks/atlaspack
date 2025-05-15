@@ -31,7 +31,7 @@ const arch = {
 
 const release = `atlaspack-${platform}-${arch}`;
 
-const version = process.env.ATLASPACK_VERSION || '0.0.13-local';
+const version = process.env.ATLASPACK_VERSION || '0.0.0-local';
 if (!semver.valid(version)) {
   console.error('Invalid semver specified');
   process.exit(1);
@@ -64,7 +64,18 @@ const packageJson = {
   devDependencies: {},
 };
 
-for (const pkgPath of glob.sync('./packages/**/package.json', {
+const excludeList = [
+  'contextual-imports-swc-plugin',
+  "apvm",
+  "test",
+  "node_modules",
+  "bundler-experimental",
+  "parcel-to-atlaspack",
+]
+// Find public packages, mark them as included and construct the
+// package.json exports key to create a public API that represents
+// the folder structure of the repo
+main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
   cwd: __root,
   ignore: [
     '**/node_modules/**',
@@ -74,46 +85,77 @@ for (const pkgPath of glob.sync('./packages/**/package.json', {
     '**/apvm/**/*',
   ],
 })) {
-  if (pkgPath.includes('apvm')) continue;
-  if (pkgPath.includes('node_modules')) continue;
-  if (pkgPath.includes('test')) continue;
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(__root, pkgPath), 'utf8'));
-    if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
-      continue;
-    }
+  // The ignore patterns don't work 🤷
+  for (const exclude of excludeList) {
+    if (pkgPath.includes(exclude)) continue main;
+  }
 
-    tarInclude.push(path.dirname(pkgPath));
-    const entry = require.resolve(pkg.name).replace(__root + '/', '');
-    const specifier = path.dirname(pkgPath).replace('./packages/', '');
-
-    packageJson.exports[`./${specifier}`] = `./lib/${entry}`;
-
-    packageJson.dependencies[pkg.name] = `file:./lib/${path
-      .dirname(pkgPath)
-      .replace('./', '')}`;
-
-    for (const [key, version] of Object.entries(pkg.dependencies)) {
-      if (key.startsWith('@atlaspack/')) continue;
-      // Resolve dependencies to their exact versions
-      // const pkgPath = module.findPackageJSON(key, new URL('../', import.meta.url));
-      // const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'))
-      if (
-        !packageJson.dependencies[key] ||
-        semver.gt(version, packageJson.dependencies[key])
-      ) {
-        packageJson.dependencies[key] = version;
-      }
-    }
-
-    if (pkg.name === '@atlaspack/node-resolver-core') {
-      packageJson.devDependencies = {
-        ...packageJson.devDependencies,
-        ...pkg.devDependencies,
-      };
-    }
-  } catch (error) {
+  const pkgDir = path.dirname(pkgPath)
+  const pkg = readJson(path.join(__root, pkgPath));
+  if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
     continue;
+  }
+
+  tarInclude.push(path.dirname(pkgPath));
+  const entry = require.resolve(pkg.name).replace(__root + '/', '');
+  const specifier = path.dirname(pkgPath).replace('./packages/', '');
+  const parsedEntry = path.parse(entry)
+
+  // Find types
+  let types = undefined
+  if (pkg.types) {
+    types = `./lib/${pkgDir.replace('./', '')}/${pkg.types}`
+  } else if (fs.existsSync(path.join(parsedEntry.dir, `${parsedEntry.name}.d.ts`))) {
+    types = `./lib/${parsedEntry.dir.replace('./', '')}/${parsedEntry.name}.d.ts`
+  } else if (fs.existsSync(path.join(pkgDir, 'index.d.ts'))) {
+    types = `./lib/${pkgDir.replace('./', '')}/index.d.ts`
+  }
+
+  // Reexport /packages/core on the top level
+  if (path.dirname(pkgDir).endsWith('core')) {
+    const basename = path.basename(specifier)
+    if (basename !== 'utils') {
+      packageJson.exports[`./${path.basename(specifier)}/*`] = `./lib/${pkgDir}/*`;
+    }
+    packageJson.exports[`./${path.basename(specifier)}`] = {
+      types,
+      default: `./lib/${entry}`
+    };
+  }
+
+  // package.json exports
+  packageJson.exports[`./${specifier}`] = {
+    types,
+    default: `./lib/${entry}`
+  };
+  if (specifier !== 'core/utils') {
+    packageJson.exports[`./${specifier}/*`] = `./lib/${pkgDir}/*`;
+  }
+
+  // Add target to package.json as a symlink package
+  packageJson.dependencies[pkg.name] = `file:./lib/${path
+    .dirname(pkgPath)
+    .replace('./', '')}`;
+
+  // Merge dependencies
+  for (const [key] of Object.entries(pkg.dependencies || {})) {
+    if (key.startsWith('@atlaspack/')) continue;
+    const dep = readJson(module.findPackageJSON(key, new URL(url.pathToFileURL(pkgDir))))
+    console.log(dep.name, dep.version)
+    if (key === '@parcel/watcher') {
+      packageJson.dependencies[key] = "2.5.1";
+    } else if (!packageJson.dependencies[key]) {
+      packageJson.dependencies[key] = dep.version;
+    } else if (semver.gt(dep.version, packageJson.dependencies[key])) {
+      packageJson.dependencies[key] = dep.version;
+    }
+  }
+
+  if (pkg.name === '@atlaspack/node-resolver-core') {
+    packageJson.devDependencies = {
+      ...packageJson.devDependencies,
+      ...pkg.devDependencies,
+    };
   }
 }
 
@@ -121,14 +163,11 @@ packageJson.exports['./*'] = './lib/packages/core/*/lib/index.js';
 packageJson.dependencies = sortObject(packageJson.dependencies);
 packageJson.devDependencies = sortObject(packageJson.devDependencies);
 
-if (fs.existsSync(path.join(__root, 'release', release))) {
-  fs.rmSync(path.join(__root, 'release', release), {
-    recursive: true,
-    force: true,
-  });
-}
-fs.mkdirSync(path.join(__root, 'release', release, 'lib'), {recursive: true});
+// Create release dir
+createOrReplaceDir(path.join(__root, 'release', release))
+createOrReplaceDir(path.join(__root, 'release', release, 'lib'))
 
+// Copy files, excluding specific files
 for (const include of tarInclude) {
   await fsExtra.copy(
     path.join(__root, include),
@@ -146,124 +185,53 @@ for (const include of tarInclude) {
   );
 }
 
-fs.writeFileSync(
-  path.join(__root, 'release', release, 'lib', 'package.json'),
-  JSON.stringify(
-    {
-      name: '@atlaspack/monorepo',
-      private: true,
-      workspaces: ['packages/*/*'],
-    },
-    null,
-    2,
-  ),
-  'utf8',
-);
+writeJson(path.join(__root, 'release', release, 'lib', 'package.json'), {
+  name: '@atlaspack/monorepo',
+  private: true,
+  workspaces: ['packages/*/*'],
+})
 
-fs.writeFileSync(
-  path.join(__root, 'release', release, 'package.json'),
-  JSON.stringify(packageJson, null, 2),
-  'utf8',
-);
-fs.writeFileSync(
-  path.join(__root, 'release', release, '.npmignore'),
-  '!*',
-  'utf8',
-);
+writeJson(path.join(__root, 'release', release, 'package.json'), packageJson)
+writeFile(path.join(__root, 'release', release, '.npmignore'), '!*\n',)
 
+// Modify release package.json files
 for (const pkgPath of glob.sync(
   `./release/${release}/lib/packages/**/package.json`,
   {cwd: __root},
 )) {
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(__root, pkgPath), 'utf8'));
-    if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
-      continue;
-    }
-
-    const original = pkg.dependencies;
-    pkg.dependencies = {};
-
-    for (const [key, version] of Object.entries(original)) {
-      if (key.startsWith('@atlaspack/')) continue;
-      pkg.dependencies[key] = version;
-    }
-
-    pkg.version = version;
-    pkg.dependencies = sortObject(pkg.dependencies);
-    pkg.peerDependencies = undefined;
-
-    if (pkg.name !== '@atlaspack/node-resolver-core') {
-      pkg.devDependencies = undefined;
-    }
-    pkg.scripts = undefined;
-    pkg.exports = undefined;
-    pkg.engines = undefined;
-    pkg.source = undefined;
-
-    fs.writeFileSync(
-      path.join(__root, pkgPath),
-      JSON.stringify(pkg, null, 2),
-      'utf8',
-    );
-  } catch (error) {
+  const pkg = readJson(path.join(__root, pkgPath));
+  if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
     continue;
   }
+
+  const original = pkg.dependencies;
+  pkg.dependencies = {};
+
+  for (const [key, version] of Object.entries(original || {})) {
+    if (key.startsWith('@atlaspack/')) continue;
+    pkg.dependencies[key] = version;
+  }
+
+  pkg.version = version;
+  pkg.dependencies = sortObject(pkg.dependencies);
+  pkg.peerDependencies = undefined;
+
+  if (pkg.name !== '@atlaspack/node-resolver-core') {
+    pkg.devDependencies = undefined;
+  }
+  pkg.scripts = undefined;
+  pkg.exports = undefined;
+  pkg.engines = undefined;
+  pkg.source = undefined;
+
+  writeJson(path.join(__root, pkgPath), pkg)
 }
 
 // Generate lock files
-try {
-  if (fs.existsSync(__tmp)) {
-    fs.rmSync(__tmp, {
-      recursive: true,
-      force: true,
-    });
-  }
-  fs.cpSync(path.join(__root, 'release', release), __tmp, {recursive: true});
+generateLockFile('npm', 'package-lock.json', '.package-lock.json')
+generateLockFile('yarn', 'yarn.lock', '.yarn.lock')
 
-  child_process.execFileSync('npm', ['install', '--legacy-peer-deps'], {
-    stdio: 'inherit',
-    shell: true,
-    cwd: __tmp,
-  });
-
-  fs.cpSync(
-    path.join(__tmp, 'package-lock.json'),
-    path.join(__root, 'release', release, '.package-lock.json'),
-  );
-} finally {
-  fs.rmSync(__tmp, {
-    recursive: true,
-    force: true,
-  });
-}
-
-try {
-  if (fs.existsSync(__tmp)) {
-    fs.rmSync(__tmp, {
-      recursive: true,
-      force: true,
-    });
-  }
-  fs.cpSync(path.join(__root, 'release', release), __tmp, {recursive: true});
-
-  child_process.execFileSync('yarn', {
-    stdio: 'inherit',
-    shell: true,
-    cwd: __tmp,
-  });
-
-  fs.cpSync(
-    path.join(__tmp, 'yarn.lock'),
-    path.join(__root, 'release', release, '.yarn.lock'),
-  );
-} finally {
-  fs.rmSync(__tmp, {
-    recursive: true,
-    force: true,
-  });
-}
-
+// Create tarball
 child_process.execFileSync('npm', ['pack'], {
   stdio: 'inherit',
   shell: true,
@@ -275,6 +243,39 @@ fs.renameSync(
   path.join(__root, 'release', `${release}-${version}.tar.gz`),
 );
 
+// -----
+// Utils
+// -----
+function createOrReplaceDir(target) {
+  if (fs.existsSync(target)) {
+    fs.rmSync(target, {
+      recursive: true,
+      force: true,
+    });
+  }
+  fs.mkdirSync(target, {recursive: true});
+}
+
+function writeFile(target, data) {
+  fs.writeFileSync(
+    target,
+    data,
+    'utf8',
+  );
+}
+
+function writeJson(target, obj) {
+  writeFile(target, JSON.stringify(obj, null, 2))
+}
+
+function readFile(target) {
+  return fs.readFileSync(target, 'utf8');
+}
+
+function readJson(target) {
+  return JSON.parse(readFile(target))
+}
+
 function sortObject(input) {
   return Object.keys(input)
     .sort()
@@ -282,4 +283,36 @@ function sortObject(input) {
       obj[key] = input[key];
       return obj;
     }, {});
+}
+
+function generateLockFile(packageManager, src, dest) {
+  try {
+    if (fs.existsSync(__tmp)) {
+      fs.rmSync(__tmp, {
+        recursive: true,
+        force: true,
+      });
+    }
+    fs.cpSync(path.join(__root, 'release', release), __tmp, {recursive: true});
+
+    const args = ['install']
+    if (packageManager == 'npm') {
+      args.push('--legacy-peer-deps')
+    }
+    child_process.execFileSync(packageManager, args, {
+      stdio: 'inherit',
+      shell: true,
+      cwd: __tmp,
+    });
+
+    fs.cpSync(
+      path.join(__tmp, src),
+      path.join(__root, 'release', release, dest),
+    );
+  } finally {
+    fs.rmSync(__tmp, {
+      recursive: true,
+      force: true,
+    });
+  }
 }

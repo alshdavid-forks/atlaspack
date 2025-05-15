@@ -2,6 +2,7 @@
   "name": "@atlaspack/conditional-import-types",
   "version": "2.13.3",
   "license": "MIT",
+  "main": "index.cjs",
   "types": "index.d.ts",
   "repository": {
     "type": "git",
