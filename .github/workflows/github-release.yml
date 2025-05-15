@@ -90,8 +90,8 @@ jobs:
             target: aarch64-apple-darwin
 
           # MACOS AMD64
-          - name: x86_64-apple-darwin
-            target: x86_64-apple-darwin
+          # - name: x86_64-apple-darwin
+          #   target: x86_64-apple-darwin
     name: ${{ matrix.name }}
     runs-on: macos-latest
     steps:
