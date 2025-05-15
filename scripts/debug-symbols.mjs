@@ -69,8 +69,7 @@ async function stripDebugSymbols() {
 async function uploadDebugSymbolsToSentry() {
   $.stdio = 'inherit';
   console.log('Uploading debug files to sentry');
-  await $`yarn sentry-cli debug-files upload --include-sources --log-level=info packages`;
-}
+  // await $`yarn sentry-cli debug-files upload --include-sources --log-level=info packages`;
 
 /// Remove/clean up debug files
 async function removeFiles(debugFiles) {
