@@ -141,7 +141,9 @@ jobs:
           pattern: release-*
           path: release
           merge-multiple: true
-      - run: |
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
           echo "Version: ${ATLASPACK_VERSION}"
           gh release create $TAG  --draft --notes "Release ${ATLASPACK_VERSION}"
           gh release edit $TAG --title "Release ${ATLASPACK_VERSION}" --prerelease
