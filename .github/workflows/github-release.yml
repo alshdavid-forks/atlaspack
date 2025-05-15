@@ -145,8 +145,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           echo "Version: ${ATLASPACK_VERSION}"
-          gh release create $TAG  --draft --notes "Release ${ATLASPACK_VERSION}"
-          gh release edit $TAG --title "Release ${ATLASPACK_VERSION}" --prerelease
+          gh release create $ATLASPACK_VERSION  --draft --notes "Release ${ATLASPACK_VERSION}"
+          gh release edit $ATLASPACK_VERSION --title "Release ${ATLASPACK_VERSION}" --prerelease
 
           cd release
           for name in *.tar.gz; do
@@ -154,4 +154,4 @@ jobs:
               gh release upload $ATLASPACK_VERSION ${name}.tar.gz
           done
 
-          gh release edit $TAG --draft=false
+          gh release edit $ATLASPACK_VERSION --draft=false
