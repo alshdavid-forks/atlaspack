@@ -127,7 +127,6 @@ jobs:
 
   build-and-release-github:
     name: Build and release Github
-    if: github.ref_name == 'main'
     needs:
       - build-native-linux
       - build-native-macos
