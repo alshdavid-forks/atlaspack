@@ -88,12 +88,14 @@ jobs:
           # MACOS ARM64
           - name: aarch64-apple-darwin
             target: aarch64-apple-darwin
+            os: macos-15
 
           # MACOS AMD64
-          # - name: x86_64-apple-darwin
-          #   target: x86_64-apple-darwin
+          - name: x86_64-apple-darwin
+            target: x86_64-apple-darwin
+            os: macos-13
     name: ${{ matrix.name }}
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
