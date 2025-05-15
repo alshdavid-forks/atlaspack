@@ -16,6 +16,7 @@ env:
 
 jobs:
   build-native-linux:
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -91,9 +92,9 @@ jobs:
             os: macos-15
 
           # MACOS AMD64
-          - name: x86_64-apple-darwin
-            target: x86_64-apple-darwin
-            os: macos-13
+          # - name: x86_64-apple-darwin
+          #   target: x86_64-apple-darwin
+          #   os: macos-13
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     steps:
@@ -133,9 +134,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: ./.github/actions/setup-node
+        with: { fetch-depth: 0 }
       - uses: actions/download-artifact@v4
         with:
           pattern: release-*
@@ -144,6 +143,7 @@ jobs:
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -e
           echo "Version: ${ATLASPACK_VERSION}"
           gh release create $ATLASPACK_VERSION  --draft --notes "Release ${ATLASPACK_VERSION}"
           gh release edit $ATLASPACK_VERSION --title "Release ${ATLASPACK_VERSION}" --prerelease
@@ -151,7 +151,8 @@ jobs:
           cd release
           for name in *.tar.gz; do
               [ -f "$i" ] || break
-              gh release upload $ATLASPACK_VERSION ${name}.tar.gz
+              echo Uploading $name
+              gh release upload $ATLASPACK_VERSION $name
           done
 
           gh release edit $ATLASPACK_VERSION --draft=false
