@@ -1,23 +1,47 @@
 /* eslint-disable no-console */
+
 /*
-  This script creates two packages
+  This script creates two packages.
+
+  Npm package: Designed to be consumed with yarn or npm (without postinstall steps)
+
+  atlaspack-linux-amd64
+  ├── lib             // The compiled output of the "packages" folder
+  │   ├── bundlers
+  │   ├── core
+  │   ├── fs
+  │   └── ...
+  ├── shims           // Shims redirecting to "../lib"
+  │   ├── bundlers
+  │   ├── core
+  │   ├── fs
+  │   └── ...
+  └ package.json      // Uses "exports" to create the public API
+                      // Uses "file:./path/to/file" to create symlinks for the shims
+
+  Tarballed repo: Designed to be consumed without a package manager.
+
   ./atlaspack-platform-arch.tar.gz
-  ├── cmd
+  ├── node_modules
+  │   ├── @atlaspack                // Shims redirecting to the Atlaspack code
+  │   │   ├── core
+  │   │   ├── fs
+  │   │   └── ...
+  │   └── atlaspack-platform-arch   // The npm package from above
+  │   └── ...                       // Rest of node_modules code
+  ├── cmd                           // Bin entrypoint
   │   └── main.js
-  ├── lib
+  ├── lib                           // Shims redirecting to the Atlaspack code
   │   ├── build-cache
   │   └── bundlers
   │       ├── default
   │       ├── library
   │       └── ...
-  ├── node_modules
-  │   ├── @atlaspack
-  │   │   ├── core
-  │   │   ├── fs
-  │   │   └── ...
-  │   └── atlaspack-platform-arch
   └── package.json
+
+  ... Yes I know this script is kinda wild
 */
+
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as crypto from 'node:crypto';
