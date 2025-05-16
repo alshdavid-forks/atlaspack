@@ -293,16 +293,6 @@ try {
   }
   fs.cpSync(path.join(__root, 'release', release), __tmp, {recursive: true});
 
-  child_process.execFileSync(
-    'npm',
-    ['install', '--legacy-peer-deps', '--package-lock-only'],
-    {
-      stdio: 'inherit',
-      shell: true,
-      cwd: __tmp,
-    },
-  );
-
   child_process.execFileSync('yarn', ['install'], {
     stdio: 'inherit',
     shell: true,
