@@ -58,6 +58,11 @@ console.table({
   version,
 });
 
+// Create release dir
+createOrReplaceDir(path.join(__root, 'release', release));
+createOrReplaceDir(path.join(__root, 'release', release, 'lib'));
+createOrReplaceDir(path.join(__root, 'release', release, 'shims'));
+
 // Main package.json
 const packageJson = {
   name: release,
@@ -154,10 +159,43 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
     packageJson.exports[`./${specifier}/*`] = `./lib/${pkgDir}/*`;
   }
 
+  const pkgBase = pkg.name.replace('@atlaspack/', '');
+  const shimRoot = path.join(__root, 'release', release, 'shims', pkgBase);
+  createOrReplaceDir(shimRoot);
+
+  if (!pkgBase.startsWith('config-')) {
+    writeJson(path.join(shimRoot, 'package.json'), {
+      name: pkg.name,
+      main: `index.cjs`,
+      version,
+      types: types
+        ? `../../lib/${pkgDir.replace('./', '')}/${types}`
+        : undefined,
+    });
+
+    writeFile(
+      path.join(shimRoot, 'index.cjs'),
+      `
+  const path = require('path');
+  const fs = require('fs');
+
+  // Executed directly
+  if (path.basename(path.dirname(__dirname)) === 'shims') {
+    module.exports = require('../../lib/${entry}');
+  } else {
+    // Executed in node_modules
+    module.exports = require('../../../lib/${entry}');
+  }
+  `.trim(),
+    );
+  }
+
   // Add target to package.json as a symlink package
-  packageJson.dependencies[pkg.name] = `file:./lib/${path
-    .dirname(pkgPath)
-    .replace('./', '')}`;
+  if (pkgBase.startsWith('config-')) {
+    packageJson.dependencies[pkg.name] = `file:./lib/${pkgDir}`;
+  } else {
+    packageJson.dependencies[pkg.name] = `file:./shims/${pkgBase}`;
+  }
 
   // Merge dependencies
   for (const [key] of Object.entries(pkg.dependencies || {})) {
@@ -187,10 +225,6 @@ packageJson.exports['./*'] = './lib/packages/core/*/lib/index.js';
 packageJson.dependencies = sortObject(packageJson.dependencies);
 packageJson.devDependencies = sortObject(packageJson.devDependencies);
 
-// Create release dir
-createOrReplaceDir(path.join(__root, 'release', release));
-createOrReplaceDir(path.join(__root, 'release', release, 'lib'));
-
 // Copy files, excluding specific files
 for (const include of tarInclude) {
   await fsExtra.copy(
@@ -216,8 +250,8 @@ writeJson(path.join(__root, 'release', release, 'lib', 'package.json'), {
 });
 
 writeJson(path.join(__root, 'release', release, 'package.json'), packageJson);
-writeFile(path.join(__root, 'release', release, '.npmignore'), '!*\n');
-
+// writeFile(path.join(__root, 'release', release, '.npmignore'), '!*\n');
+//
 // Modify release package.json files
 for (const pkgPath of glob.sync(
   `./release/${release}/lib/packages/**/package.json`,
