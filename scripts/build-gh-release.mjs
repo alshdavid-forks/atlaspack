@@ -318,11 +318,11 @@ try {
 
   fs.renameSync(
     path.join(__root, 'release', release, `${release}-${version}.tgz`),
-    path.join(__root, 'release', `${release}-${version}-npm.tar.gz`),
+    path.join(__root, 'release', `${release}-npm.tar.gz`),
   );
 
   // Create a tarball of the whole repo with node_modules
-  const tarComplete = `${release}-${version}.tar.gz`;
+  const tarComplete = `${release}.tar.gz`;
 
   if (fs.existsSync(path.join(__tmp, 'node_modules', packageJson.name))) {
     fs.rmSync(path.join(__tmp, 'node_modules', packageJsonack.name), {
