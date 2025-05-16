@@ -67,6 +67,7 @@ createOrReplaceDir(path.join(__root, 'release', release, 'shims'));
 const packageJson = {
   name: release,
   version: version,
+  type: 'commonjs',
   bin: {
     atlaspack: './lib/packages/core/cli/bin/atlaspack.js',
   },
@@ -353,6 +354,7 @@ try {
   const shimPackageJson = {
     name: packageJson.name + '-root',
     version,
+    type: 'commonjs',
     bin: {
       atlaspack: 'cmd/main.js',
     },
@@ -392,28 +394,6 @@ try {
   child_process.execFileSync(
     'tar',
     ['-czf', path.join(__root, 'release', tarComplete), '.'],
-    {
-      stdio: 'inherit',
-      shell: true,
-      cwd: __tmp,
-    },
-  );
-
-  // Create a tarball of just node_modules and the lock files
-  const tarDependencies = `${release}-${version}-dependencies.tar.gz`;
-  fs.rmSync(path.join(__tmp, 'node_modules', packageJson.name), {
-    recursive: true,
-  });
-
-  child_process.execFileSync(
-    'tar',
-    [
-      '-czf',
-      path.join(__root, 'release', tarDependencies),
-      'node_modules',
-      'yarn.lock',
-      'package-lock.json',
-    ],
     {
       stdio: 'inherit',
       shell: true,
