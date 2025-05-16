@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import * as crypto from 'node:crypto';
 import fsExtra from 'fs-extra';
 import * as process from 'node:process';
 import * as module from 'node:module';
@@ -276,10 +277,11 @@ try {
     cwd: __tmp,
   });
 
-  const tar = `${release}-${version}-node-modules.tar.gz`;
+  // Create a tarball of the whole repo with node_modules
+  const tarComplete = `${release}-${version}.tar.gz`;
   child_process.execFileSync(
     'tar',
-    ['-czf', tar, 'node_modules', 'yarn.lock', 'package-lock.json'],
+    ['-czf', path.join(__root, 'release', tarComplete), '.'],
     {
       stdio: 'inherit',
       shell: true,
@@ -287,7 +289,24 @@ try {
     },
   );
 
-  fs.cpSync(path.join(__tmp, tar), path.join(__root, 'release', tar));
+  // Create a tarball of just node_modules and the lock files
+  const tarDependencies = `${release}-${version}-dependencies.tar.gz`;
+  fs.rmSync(path.join(__tmp, 'node_modules', '@atlaspack'), {recursive: true});
+  child_process.execFileSync(
+    'tar',
+    [
+      '-czf',
+      path.join(__root, 'release', tarDependencies),
+      'node_modules',
+      'yarn.lock',
+      'package-lock.json',
+    ],
+    {
+      stdio: 'inherit',
+      shell: true,
+      cwd: __tmp,
+    },
+  );
 } finally {
   fs.rmSync(__tmp, {
     recursive: true,
@@ -304,8 +323,21 @@ child_process.execFileSync('npm', ['pack'], {
 
 fs.renameSync(
   path.join(__root, 'release', release, `${release}-${version}.tgz`),
-  path.join(__root, 'release', `${release}-${version}.tar.gz`),
+  path.join(__root, 'release', `${release}-${version}-npm.tar.gz`),
 );
+
+for (const item of fs.readdirSync(path.join(__root, 'release'))) {
+  if (!item.endsWith('.tar.gz')) continue;
+  const result = await new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(path.join(__root, 'release', item));
+    stream.on('error', (err) => reject(err));
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
+  console.log(result);
+  writeFile(path.join(__root, 'release', `${item}.sha256`), result);
+}
 
 // -----
 // Utils

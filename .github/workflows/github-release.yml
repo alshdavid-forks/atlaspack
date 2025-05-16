@@ -123,7 +123,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with: {fetch-depth: 0}
       - uses: actions/download-artifact@v4
         with:
           pattern: release-*
@@ -139,6 +139,12 @@ jobs:
 
           cd release
           for name in *.tar.gz; do
+              [ -f "$name" ] || break
+              echo Uploading $name
+              gh release upload $ATLASPACK_VERSION $name
+          done
+
+          for name in *.sha256; do
               [ -f "$name" ] || break
               echo Uploading $name
               gh release upload $ATLASPACK_VERSION $name
