@@ -1,4 +1,23 @@
 /* eslint-disable no-console */
+/*
+  This script creates two packages
+  ./atlaspack-platform-arch.tar.gz
+  ├── cmd
+  │   └── main.js
+  ├── lib
+  │   ├── build-cache
+  │   └── bundlers
+  │       ├── default
+  │       ├── library
+  │       └── ...
+  ├── node_modules
+  │   ├── @atlaspack
+  │   │   ├── core
+  │   │   ├── fs
+  │   │   └── ...
+  │   └── atlaspack-platform-arch
+  └── package.json
+*/
 import * as path from 'node:path';
 import * as fs from 'node:fs';
 import * as crypto from 'node:crypto';
@@ -69,11 +88,10 @@ const packageJson = {
   version: version,
   type: 'commonjs',
   bin: {
-    atlaspack: './lib/packages/core/cli/bin/atlaspack.js',
+    atlaspack: './lib/core/cli/bin/atlaspack.js',
   },
   exports: {
-    '.': './lib/packages/core/core/lib/index.js',
-    './*': './lib/packages/core/*/lib/index.js',
+    '.': './lib/core/core/lib/index.js',
     './package.json': './package.json',
   },
   dependencies: {},
@@ -97,8 +115,8 @@ const tarInclude = [];
 // Find public packages, mark them as included and construct the
 // package.json exports key to create a public API that represents
 // the folder structure of the repo
-main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
-  cwd: __root,
+main: for (const pkgPath of glob.sync('**/*/package.json', {
+  cwd: path.join(__root, 'packages'),
   ignore: [
     '**/node_modules/**',
     '**/integration-tests/**',
@@ -113,14 +131,14 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
   }
 
   const pkgDir = path.dirname(pkgPath);
-  const pkg = readJson(path.join(__root, pkgPath));
+  const pkg = readJson(path.join(__root, 'packages', pkgPath));
   if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
     continue;
   }
 
   tarInclude.push(path.dirname(pkgPath));
-  const entry = require.resolve(pkg.name).replace(__root + '/', '');
-  const specifier = path.dirname(pkgPath).replace('./packages/', '');
+  const entry = require.resolve(pkg.name).replace(__root + '/packages/', '');
+  const specifier = path.dirname(pkgPath).replace('./', '');
   const parsedEntry = path.parse(entry);
 
   // Find types
@@ -201,7 +219,7 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
     const dep = readJson(
       module.findPackageJSON(key, new URL(url.pathToFileURL(pkgDir))),
     );
-    console.log(dep.name, dep.version);
+    // console.log(dep.name, dep.version);
     if (key === '@parcel/watcher') {
       packageJson.dependencies[key] = '2.5.1';
     } else if (!packageJson.dependencies[key]) {
@@ -219,14 +237,13 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
   }
 }
 
-packageJson.exports['./*'] = './lib/packages/core/*/lib/index.js';
 packageJson.dependencies = sortObject(packageJson.dependencies);
 packageJson.devDependencies = sortObject(packageJson.devDependencies);
 
 // Copy files, excluding specific files
 for (const include of tarInclude) {
   await fsExtra.copy(
-    path.join(__root, include),
+    path.join(__root, 'packages', include),
     path.join(__root, 'release', release, 'lib', include),
     {
       filter: (path) => {
@@ -241,20 +258,13 @@ for (const include of tarInclude) {
   );
 }
 
-writeJson(path.join(__root, 'release', release, 'lib', 'package.json'), {
-  name: '@atlaspack/monorepo',
-  private: true,
-  workspaces: ['packages/*/*'],
-});
-
 writeJson(path.join(__root, 'release', release, 'package.json'), packageJson);
 // writeFile(path.join(__root, 'release', release, '.npmignore'), '!*\n');
-//
+
 // Modify release package.json files
-for (const pkgPath of glob.sync(
-  `./release/${release}/lib/packages/**/package.json`,
-  {cwd: __root},
-)) {
+for (const pkgPath of glob.sync(`./release/${release}/lib/**/package.json`, {
+  cwd: __root,
+})) {
   const pkg = readJson(path.join(__root, pkgPath));
   if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
     continue;
@@ -293,12 +303,6 @@ try {
   }
   fs.cpSync(path.join(__root, 'release', release), __tmp, {recursive: true});
 
-  child_process.execFileSync('yarn', ['install'], {
-    stdio: 'inherit',
-    shell: true,
-    cwd: __tmp,
-  });
-
   // Create npm tarball
   child_process.execFileSync('npm', ['pack'], {
     stdio: 'inherit',
@@ -312,7 +316,17 @@ try {
   );
 
   // Create a tarball of the whole repo with node_modules
+  //
+  // Creates a package that looks like
+  // /atlaspack-platform-arch.tar.gz
+
   const tarComplete = `${release}.tar.gz`;
+
+  child_process.execFileSync('yarn', ['install'], {
+    stdio: 'inherit',
+    shell: true,
+    cwd: __tmp,
+  });
 
   if (fs.existsSync(path.join(__tmp, 'node_modules', packageJson.name))) {
     fs.rmSync(path.join(__tmp, 'node_modules', packageJsonack.name), {
