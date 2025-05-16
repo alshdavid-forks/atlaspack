@@ -142,7 +142,7 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
     if (basename !== 'utils') {
       packageJson.exports[
         `./${path.basename(specifier)}/*`
-      ] = `./lib/${pkgDir}/*`;
+      ] = `./lib/${pkgDir.replace('./', '')}/*`;
     }
     packageJson.exports[`./${path.basename(specifier)}`] = {
       types,
@@ -156,13 +156,19 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
     default: `./lib/${entry}`,
   };
   if (specifier !== 'core/utils') {
-    packageJson.exports[`./${specifier}/*`] = `./lib/${pkgDir}/*`;
+    packageJson.exports[`./${specifier}/*`] = `./lib/${pkgDir.replace(
+      './',
+      '',
+    )}/*`;
   }
 
   const pkgBase = pkg.name.replace('@atlaspack/', '');
+
+  // Need to create shims so yarn resolves things correctly
   const shimRoot = path.join(__root, 'release', release, 'shims', pkgBase);
   createOrReplaceDir(shimRoot);
 
+  // Exclude configs from shims because they are json files
   if (!pkgBase.startsWith('config-')) {
     writeJson(path.join(shimRoot, 'package.json'), {
       name: pkg.name,
@@ -176,16 +182,7 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
     writeFile(
       path.join(shimRoot, 'index.cjs'),
       `
-  const path = require('path');
-  const fs = require('fs');
-
-  // Executed directly
-  if (path.basename(path.dirname(__dirname)) === 'shims') {
-    module.exports = require('../../lib/${entry}');
-  } else {
-    // Executed in node_modules
-    module.exports = require('../../../lib/${entry}');
-  }
+  module.exports = require('atlaspack-linux-amd64/${specifier}')
   `.trim(),
     );
   }
@@ -311,8 +308,87 @@ try {
     cwd: __tmp,
   });
 
+  // Create npm tarball
+  child_process.execFileSync('npm', ['pack'], {
+    stdio: 'inherit',
+    shell: true,
+    cwd: path.join(__root, 'release', release),
+  });
+
+  fs.renameSync(
+    path.join(__root, 'release', release, `${release}-${version}.tgz`),
+    path.join(__root, 'release', `${release}-${version}-npm.tar.gz`),
+  );
+
   // Create a tarball of the whole repo with node_modules
   const tarComplete = `${release}-${version}.tar.gz`;
+
+  if (fs.existsSync(path.join(__tmp, 'node_modules', packageJson.name))) {
+    fs.rmSync(path.join(__tmp, 'node_modules', packageJsonack.name), {
+      recursive: true,
+      force: true,
+    });
+  }
+
+  fs.mkdirSync(path.join(__tmp, 'node_modules', packageJson.name));
+  fs.renameSync(
+    path.join(__tmp, 'lib'),
+    path.join(__tmp, 'node_modules', packageJson.name, 'lib'),
+  );
+  fs.renameSync(
+    path.join(__tmp, 'shims'),
+    path.join(__tmp, 'node_modules', packageJson.name, 'shims'),
+  );
+  fs.renameSync(
+    path.join(__tmp, 'package.json'),
+    path.join(__tmp, 'node_modules', packageJson.name, 'package.json'),
+  );
+
+  fs.mkdirSync(path.join(__tmp, 'cmd'), {recursive: true});
+  writeFile(
+    path.join(__tmp, 'cmd', 'main.js'),
+    `require('${packageJson.name}/cli/bin/atlaspack.js')`,
+  );
+
+  const shimPackageJson = {
+    name: packageJson.name + '-root',
+    version,
+    bin: {
+      atlaspack: 'cmd/main.js',
+    },
+    exports: {
+      '.': {
+        types: './lib/core/index.d.ts',
+        default: './lib/core/index.js',
+      },
+    },
+  };
+
+  for (const [key, value] of Object.entries(packageJson.exports)) {
+    if (typeof value === 'string') continue;
+    const shimBase = key.replace('./', '');
+    fs.mkdirSync(path.join(__tmp, 'lib', shimBase), {recursive: true});
+    writeFile(
+      path.join(__tmp, 'lib', shimBase, 'index.js'),
+      `module.exports = require("${packageJson.name}/${shimBase}")`,
+    );
+    writeFile(
+      path.join(__tmp, 'lib', shimBase, 'index.d.ts'),
+      `
+      // @ts-ignore
+      export * from "${packageJson.name}/${shimBase}";
+      // @ts-ignore
+      export {default} from "${packageJson.name}/${shimBase}";
+    `,
+    );
+    shimPackageJson.exports[key] = {
+      types: `./lib/${shimBase}/index.d.ts`,
+      default: `./lib/${shimBase}/index.js`,
+    };
+  }
+
+  writeJson(path.join(__tmp, 'package.json'), shimPackageJson);
+
   child_process.execFileSync(
     'tar',
     ['-czf', path.join(__root, 'release', tarComplete), '.'],
@@ -325,7 +401,10 @@ try {
 
   // Create a tarball of just node_modules and the lock files
   const tarDependencies = `${release}-${version}-dependencies.tar.gz`;
-  fs.rmSync(path.join(__tmp, 'node_modules', '@atlaspack'), {recursive: true});
+  fs.rmSync(path.join(__tmp, 'node_modules', packageJson.name), {
+    recursive: true,
+  });
+
   child_process.execFileSync(
     'tar',
     [
@@ -347,18 +426,6 @@ try {
     force: true,
   });
 }
-
-// Create tarball
-child_process.execFileSync('npm', ['pack'], {
-  stdio: 'inherit',
-  shell: true,
-  cwd: path.join(__root, 'release', release),
-});
-
-fs.renameSync(
-  path.join(__root, 'release', release, `${release}-${version}.tgz`),
-  path.join(__root, 'release', `${release}-${version}-npm.tar.gz`),
-);
 
 for (const item of fs.readdirSync(path.join(__root, 'release'))) {
   if (!item.endsWith('.tar.gz')) continue;
