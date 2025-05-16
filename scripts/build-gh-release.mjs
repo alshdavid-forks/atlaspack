@@ -18,6 +18,7 @@ const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
 const __root = path.dirname(__dirname);
 const require = module.createRequire(path.join(__root, 'index.js'));
 
+// For package name
 const platform = {
   linux: 'linux',
   darwin: 'macos',
@@ -29,26 +30,34 @@ const arch = {
   arm64: 'arm64',
 }[process.arch];
 
+// For optional dependencies
+const nodeArch = {
+  amd64: 'x64',
+  arm64: 'arm64',
+}[arch];
+
+const nodePlatform = {
+  linux: 'linux',
+  macos: 'darwin',
+  windows: 'win32',
+}[platform];
+
 const release = `atlaspack-${platform}-${arch}`;
 
+// Version must be semver compliant
 const version = process.env.ATLASPACK_VERSION || '0.0.0-local';
 if (!semver.valid(version)) {
   console.error('Invalid semver specified');
   process.exit(1);
 }
 
-if (!platform || !arch || !version) {
-  console.error('Invalid os/arch/version');
-  console.table({
-    platform,
-    arch,
-    version,
-  });
-  process.exit(1);
-}
+console.table({
+  platform,
+  arch,
+  version,
+});
 
-const tarInclude = [];
-
+// Main package.json
 const packageJson = {
   name: release,
   version: version,
@@ -62,16 +71,22 @@ const packageJson = {
   },
   dependencies: {},
   devDependencies: {},
+  os: [nodePlatform],
+  cpu: [nodeArch],
 };
 
+// Exclude these packages
 const excludeList = [
   'contextual-imports-swc-plugin',
-  "apvm",
-  "test",
-  "node_modules",
-  "bundler-experimental",
-  "parcel-to-atlaspack",
-]
+  'apvm',
+  'test',
+  'node_modules',
+  'bundler-experimental',
+  'parcel-to-atlaspack',
+];
+
+const tarInclude = [];
+
 // Find public packages, mark them as included and construct the
 // package.json exports key to create a public API that represents
 // the folder structure of the repo
@@ -90,7 +105,7 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
     if (pkgPath.includes(exclude)) continue main;
   }
 
-  const pkgDir = path.dirname(pkgPath)
+  const pkgDir = path.dirname(pkgPath);
   const pkg = readJson(path.join(__root, pkgPath));
   if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
     continue;
@@ -99,34 +114,40 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
   tarInclude.push(path.dirname(pkgPath));
   const entry = require.resolve(pkg.name).replace(__root + '/', '');
   const specifier = path.dirname(pkgPath).replace('./packages/', '');
-  const parsedEntry = path.parse(entry)
+  const parsedEntry = path.parse(entry);
 
   // Find types
-  let types = undefined
+  let types = undefined;
   if (pkg.types) {
-    types = `./lib/${pkgDir.replace('./', '')}/${pkg.types}`
-  } else if (fs.existsSync(path.join(parsedEntry.dir, `${parsedEntry.name}.d.ts`))) {
-    types = `./lib/${parsedEntry.dir.replace('./', '')}/${parsedEntry.name}.d.ts`
+    types = `./lib/${pkgDir.replace('./', '')}/${pkg.types}`;
+  } else if (
+    fs.existsSync(path.join(parsedEntry.dir, `${parsedEntry.name}.d.ts`))
+  ) {
+    types = `./lib/${parsedEntry.dir.replace('./', '')}/${
+      parsedEntry.name
+    }.d.ts`;
   } else if (fs.existsSync(path.join(pkgDir, 'index.d.ts'))) {
-    types = `./lib/${pkgDir.replace('./', '')}/index.d.ts`
+    types = `./lib/${pkgDir.replace('./', '')}/index.d.ts`;
   }
 
   // Reexport /packages/core on the top level
   if (path.dirname(pkgDir).endsWith('core')) {
-    const basename = path.basename(specifier)
+    const basename = path.basename(specifier);
     if (basename !== 'utils') {
-      packageJson.exports[`./${path.basename(specifier)}/*`] = `./lib/${pkgDir}/*`;
+      packageJson.exports[
+        `./${path.basename(specifier)}/*`
+      ] = `./lib/${pkgDir}/*`;
     }
     packageJson.exports[`./${path.basename(specifier)}`] = {
       types,
-      default: `./lib/${entry}`
+      default: `./lib/${entry}`,
     };
   }
 
   // package.json exports
   packageJson.exports[`./${specifier}`] = {
     types,
-    default: `./lib/${entry}`
+    default: `./lib/${entry}`,
   };
   if (specifier !== 'core/utils') {
     packageJson.exports[`./${specifier}/*`] = `./lib/${pkgDir}/*`;
@@ -140,10 +161,12 @@ main: for (const pkgPath of glob.sync('./packages/**/*/package.json', {
   // Merge dependencies
   for (const [key] of Object.entries(pkg.dependencies || {})) {
     if (key.startsWith('@atlaspack/')) continue;
-    const dep = readJson(module.findPackageJSON(key, new URL(url.pathToFileURL(pkgDir))))
-    console.log(dep.name, dep.version)
+    const dep = readJson(
+      module.findPackageJSON(key, new URL(url.pathToFileURL(pkgDir))),
+    );
+    console.log(dep.name, dep.version);
     if (key === '@parcel/watcher') {
-      packageJson.dependencies[key] = "2.5.1";
+      packageJson.dependencies[key] = '2.5.1';
     } else if (!packageJson.dependencies[key]) {
       packageJson.dependencies[key] = dep.version;
     } else if (semver.gt(dep.version, packageJson.dependencies[key])) {
@@ -164,8 +187,8 @@ packageJson.dependencies = sortObject(packageJson.dependencies);
 packageJson.devDependencies = sortObject(packageJson.devDependencies);
 
 // Create release dir
-createOrReplaceDir(path.join(__root, 'release', release))
-createOrReplaceDir(path.join(__root, 'release', release, 'lib'))
+createOrReplaceDir(path.join(__root, 'release', release));
+createOrReplaceDir(path.join(__root, 'release', release, 'lib'));
 
 // Copy files, excluding specific files
 for (const include of tarInclude) {
@@ -189,10 +212,10 @@ writeJson(path.join(__root, 'release', release, 'lib', 'package.json'), {
   name: '@atlaspack/monorepo',
   private: true,
   workspaces: ['packages/*/*'],
-})
+});
 
-writeJson(path.join(__root, 'release', release, 'package.json'), packageJson)
-writeFile(path.join(__root, 'release', release, '.npmignore'), '!*\n',)
+writeJson(path.join(__root, 'release', release, 'package.json'), packageJson);
+writeFile(path.join(__root, 'release', release, '.npmignore'), '!*\n');
 
 // Modify release package.json files
 for (const pkgPath of glob.sync(
@@ -224,12 +247,53 @@ for (const pkgPath of glob.sync(
   pkg.engines = undefined;
   pkg.source = undefined;
 
-  writeJson(path.join(__root, pkgPath), pkg)
+  writeJson(path.join(__root, pkgPath), pkg);
 }
 
-// Generate lock files
-generateLockFile('npm', 'package-lock.json', '.package-lock.json')
-generateLockFile('yarn', 'yarn.lock', '.yarn.lock')
+// Generate tarball of dependencies
+try {
+  if (fs.existsSync(__tmp)) {
+    fs.rmSync(__tmp, {
+      recursive: true,
+      force: true,
+    });
+  }
+  fs.cpSync(path.join(__root, 'release', release), __tmp, {recursive: true});
+
+  child_process.execFileSync(
+    'npm',
+    ['install', '--legacy-peer-deps', '--package-lock-only'],
+    {
+      stdio: 'inherit',
+      shell: true,
+      cwd: __tmp,
+    },
+  );
+
+  child_process.execFileSync('yarn', ['install'], {
+    stdio: 'inherit',
+    shell: true,
+    cwd: __tmp,
+  });
+
+  const tar = `${release}-${version}-node-modules.tar.gz`;
+  child_process.execFileSync(
+    'tar',
+    ['-czf', tar, 'node_modules', 'yarn.lock', 'package-lock.json'],
+    {
+      stdio: 'inherit',
+      shell: true,
+      cwd: __tmp,
+    },
+  );
+
+  fs.cpSync(path.join(__tmp, tar), path.join(__root, 'release', tar));
+} finally {
+  fs.rmSync(__tmp, {
+    recursive: true,
+    force: true,
+  });
+}
 
 // Create tarball
 child_process.execFileSync('npm', ['pack'], {
@@ -257,15 +321,11 @@ function createOrReplaceDir(target) {
 }
 
 function writeFile(target, data) {
-  fs.writeFileSync(
-    target,
-    data,
-    'utf8',
-  );
+  fs.writeFileSync(target, data, 'utf8');
 }
 
 function writeJson(target, obj) {
-  writeFile(target, JSON.stringify(obj, null, 2))
+  writeFile(target, JSON.stringify(obj, null, 2));
 }
 
 function readFile(target) {
@@ -273,7 +333,7 @@ function readFile(target) {
 }
 
 function readJson(target) {
-  return JSON.parse(readFile(target))
+  return JSON.parse(readFile(target));
 }
 
 function sortObject(input) {
@@ -283,36 +343,4 @@ function sortObject(input) {
       obj[key] = input[key];
       return obj;
     }, {});
-}
-
-function generateLockFile(packageManager, src, dest) {
-  try {
-    if (fs.existsSync(__tmp)) {
-      fs.rmSync(__tmp, {
-        recursive: true,
-        force: true,
-      });
-    }
-    fs.cpSync(path.join(__root, 'release', release), __tmp, {recursive: true});
-
-    const args = ['install']
-    if (packageManager == 'npm') {
-      args.push('--legacy-peer-deps')
-    }
-    child_process.execFileSync(packageManager, args, {
-      stdio: 'inherit',
-      shell: true,
-      cwd: __tmp,
-    });
-
-    fs.cpSync(
-      path.join(__tmp, src),
-      path.join(__root, 'release', release, dest),
-    );
-  } finally {
-    fs.rmSync(__tmp, {
-      recursive: true,
-      force: true,
-    });
-  }
 }
