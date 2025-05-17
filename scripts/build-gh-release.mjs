@@ -117,6 +117,7 @@ const packageJson = {
   exports: {
     '.': './lib/core/core/lib/index.js',
     './package.json': './package.json',
+    './bin': './lib/core/cli/bin/atlaspack.js',
   },
   dependencies: {},
   devDependencies: {},
@@ -391,6 +392,7 @@ try {
         types: './lib/core/index.d.ts',
         default: './lib/core/index.js',
       },
+      './bin': './cmd/main/js',
     },
   };
 
