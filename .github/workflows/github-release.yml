@@ -146,7 +146,7 @@ jobs:
               gh release upload $TAG $name
           done
 
-          for name in *.sha256; do
+          for name in *.sha512; do
               [ -f "$name" ] || break
               echo Uploading $name
               gh release upload $TAG $name

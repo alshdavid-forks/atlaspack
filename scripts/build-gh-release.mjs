@@ -441,14 +441,14 @@ try {
 for (const item of fs.readdirSync(path.join(__root, 'release'))) {
   if (!item.endsWith('.tar.gz')) continue;
   const result = await new Promise((resolve, reject) => {
-    const hash = crypto.createHash('sha256');
+    const hash = crypto.createHash('sha512');
     const stream = fs.createReadStream(path.join(__root, 'release', item));
     stream.on('error', (err) => reject(err));
     stream.on('data', (chunk) => hash.update(chunk));
     stream.on('end', () => resolve(hash.digest('hex')));
   });
   console.log(result);
-  writeFile(path.join(__root, 'release', `${item}.sha256`), result);
+  writeFile(path.join(__root, 'release', `${item}.sha512`), result);
 }
 
 // -----
