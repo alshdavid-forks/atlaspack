@@ -445,7 +445,7 @@ for (const item of fs.readdirSync(path.join(__root, 'release'))) {
     const stream = fs.createReadStream(path.join(__root, 'release', item));
     stream.on('error', (err) => reject(err));
     stream.on('data', (chunk) => hash.update(chunk));
-    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('end', () => resolve(hash.digest('base64')));
   });
   console.log(result);
   writeFile(
