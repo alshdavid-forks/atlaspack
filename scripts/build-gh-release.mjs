@@ -393,7 +393,7 @@ try {
         default: './lib/core/index.js',
       },
       './package.json': './package.json',
-      './bin': './cmd/main/js',
+      './bin': './cmd/main.js',
     },
   };
 
