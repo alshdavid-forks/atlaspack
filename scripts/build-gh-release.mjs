@@ -448,7 +448,10 @@ for (const item of fs.readdirSync(path.join(__root, 'release'))) {
     stream.on('end', () => resolve(hash.digest('hex')));
   });
   console.log(result);
-  writeFile(path.join(__root, 'release', `${item}.sha512`), result);
+  writeFile(
+    path.join(__root, 'release', `${item}.integrity`),
+    `sha512-${result}`,
+  );
 }
 
 // -----
