@@ -1,5 +1,5 @@
 name: Github Release
-
+run-name: Github Release (${{ inputs.version }})
 on:
   workflow_dispatch:
     inputs:
