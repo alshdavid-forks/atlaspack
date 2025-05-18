@@ -15,8 +15,13 @@ tmp
 .parcel-cache
 target
 crates
+release
 
 # Ignoring main README for now because generated Table of Contents adds a line that prettier removes
 # in precommit hook, causing `yarn lint:readme` to fail
 /README.md
 /packages/core/cli/README.md
+
+# Some build artifacts
+packages/core/rust/index.js
+packages/core/rust/index.d.ts

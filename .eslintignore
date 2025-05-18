@@ -12,6 +12,7 @@ packages/core/integration-tests/test/input/**
 packages/core/utils/test/input/**
 packages/utils/create-react-app/templates
 packages/examples
+release
 
 /benchmarks/three-js/three-js
 
